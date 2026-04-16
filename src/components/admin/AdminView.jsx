@@ -2,11 +2,13 @@ import { useState } from 'react';
 import EventsAdmin from './EventsAdmin';
 import CompetitorTimesAdmin from './CompetitorTimesAdmin';
 import SwimmersAdmin from './SwimmersAdmin';
+import ImportExportAdmin from './ImportExportAdmin';
 
 const TABS = [
   { id: 'events', label: 'Events' },
   { id: 'competitors', label: 'Comp. Times' },
   { id: 'swimmers', label: 'My Swimmers' },
+  { id: 'importexport', label: 'Import/Export' },
 ];
 
 export default function AdminView() {
@@ -37,6 +39,7 @@ export default function AdminView() {
         {tab === 'events' && <EventsAdmin />}
         {tab === 'competitors' && <CompetitorTimesAdmin />}
         {tab === 'swimmers' && <SwimmersAdmin />}
+        {tab === 'importexport' && <ImportExportAdmin />}
       </div>
     </>
   );

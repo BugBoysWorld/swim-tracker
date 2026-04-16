@@ -2,6 +2,7 @@ const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
   { id: 'placement', label: 'Placement', icon: '🏅' },
   { id: 'admin',     label: 'Admin',     icon: '⚙️' },
+  { id: 'help',      label: 'Help',      icon: '❓' },
 ];
 
 export default function BottomNav({ current, onChange }) {

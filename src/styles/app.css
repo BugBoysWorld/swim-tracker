@@ -270,17 +270,20 @@ body { overscroll-behavior: none; }
 
 .seg-btn {
   flex: 1;
-  padding: 8px 6px;
+  padding: 8px 4px;
   border: none;
   border-radius: 6px;
   background: transparent;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
   transition: all .15s;
   -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .seg-btn.active {
@@ -553,7 +556,7 @@ body { overscroll-behavior: none; }
 
 .time-chip {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   background: var(--surface-alt);
   border: 1px solid var(--border);
@@ -638,6 +641,27 @@ body { overscroll-behavior: none; }
 }
 
 .swimmer-time-event-row:last-child { border-bottom: none; }
+
+/* ── Help View ───────────────────────────────────────────────────────── */
+.help-body {
+  padding: 0 16px 16px;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
+}
+.help-body p { margin-bottom: 10px; }
+.help-body p:last-child { margin-bottom: 0; }
+.help-body ol,
+.help-body ul { padding-left: 20px; margin-bottom: 10px; }
+.help-body li { margin-bottom: 4px; }
+.help-body code {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
 
 /* ── Utility ─────────────────────────────────────────────────────────── */
 .text-secondary { color: var(--text-secondary); }

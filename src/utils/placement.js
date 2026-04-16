@@ -38,3 +38,21 @@ export function ordinal(n) {
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
+
+/**
+ * Build a Map from time value → { name, school } for UI annotation.
+ * Used by PlacementView to display competitor names alongside times.
+ *
+ * @param {Array<{ time: number, name: string, school: string }>} entries
+ * @returns {Map<number, { name: string, school: string }>}
+ */
+export function buildTimeIndex(entries) {
+  const map = new Map();
+  if (!entries) return map;
+  for (const entry of entries) {
+    if (entry && typeof entry.time === 'number') {
+      map.set(entry.time, { name: entry.name || '', school: entry.school || '' });
+    }
+  }
+  return map;
+}

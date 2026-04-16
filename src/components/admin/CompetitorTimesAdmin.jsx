@@ -8,13 +8,42 @@ export default function CompetitorTimesAdmin() {
   const { events, competitorTimes } = state;
 
   const [selectedEventId, setSelectedEventId] = useState('');
+
+  // Individual entry form
+  const [singleTime, setSingleTime] = useState('');
+  const [singleName, setSingleName] = useState('');
+  const [singleSchool, setSingleSchool] = useState('');
+  const [singleError, setSingleError] = useState('');
+
+  // Bulk entry form
   const [fields, setFields] = useState(['']);
   const [errors, setErrors] = useState([]);
-  const [confirmDelete, setConfirmDelete] = useState(null); // { eventId, time }
   const inputRefs = useRef([]);
 
-  const existingTimes = selectedEventId ? (competitorTimes[selectedEventId] || []) : [];
+  const [confirmDelete, setConfirmDelete] = useState(null); // { eventId, time }
 
+  const existingEntries = selectedEventId ? (competitorTimes[selectedEventId] || []) : [];
+
+  // ── Single entry ──────────────────────────────────────────────────
+  function handleSingleSubmit() {
+    if (!selectedEventId) return;
+    const n = parseFloat(singleTime);
+    if (!singleTime.trim() || isNaN(n) || n <= 0) {
+      setSingleError('Enter a valid time');
+      return;
+    }
+    setSingleError('');
+    dispatch({
+      type: 'ADD_COMPETITOR_TIMES',
+      eventId: selectedEventId,
+      times: [{ time: n, name: singleName.trim(), school: singleSchool.trim() }],
+    });
+    setSingleTime('');
+    setSingleName('');
+    setSingleSchool('');
+  }
+
+  // ── Bulk entry ────────────────────────────────────────────────────
   function updateField(idx, val) {
     setFields((prev) => prev.map((f, i) => (i === idx ? val : f)));
     setErrors((prev) => prev.map((e, i) => (i === idx ? '' : e)));
@@ -45,7 +74,7 @@ export default function CompetitorTimesAdmin() {
     }
   }
 
-  function handleSubmit() {
+  function handleBulkSubmit() {
     if (!selectedEventId) return;
     const newErrors = fields.map((f) => {
       const n = parseFloat(f);
@@ -56,7 +85,7 @@ export default function CompetitorTimesAdmin() {
     setErrors(newErrors);
     if (newErrors.some(Boolean)) return;
 
-    const times = fields.map((f) => parseFloat(f));
+    const times = fields.map((f) => ({ time: parseFloat(f), name: '', school: '' }));
     dispatch({ type: 'ADD_COMPETITOR_TIMES', eventId: selectedEventId, times });
     setFields(['']);
     setErrors([]);
@@ -85,21 +114,28 @@ export default function CompetitorTimesAdmin() {
             <div className="card">
               <div className="card-header">
                 Competitor Times
-                <span className="badge badge-gray">{existingTimes.length}</span>
+                <span className="badge badge-gray">{existingEntries.length}</span>
               </div>
-              {existingTimes.length === 0 ? (
+              {existingEntries.length === 0 ? (
                 <div style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: 14 }}>
                   No times added yet.
                 </div>
               ) : (
                 <div className="times-wrap">
-                  {existingTimes.map((t) => (
-                    <div key={t} className="time-chip">
-                      {formatTime(t)}s
+                  {existingEntries.map((entry) => (
+                    <div key={entry.time} className="time-chip">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <span>{formatTime(entry.time)}s</span>
+                        {(entry.name || entry.school) && (
+                          <span style={{ fontSize: 10, opacity: 0.75, lineHeight: 1.2 }}>
+                            {[entry.name, entry.school].filter(Boolean).join(' · ')}
+                          </span>
+                        )}
+                      </div>
                       <button
                         className="time-chip-delete"
-                        onClick={() => setConfirmDelete({ eventId: selectedEventId, time: t })}
-                        aria-label={`Delete ${t}`}
+                        onClick={() => setConfirmDelete({ eventId: selectedEventId, time: entry.time })}
+                        aria-label={`Delete ${entry.time}`}
                       >
                         ×
                       </button>
@@ -110,10 +146,48 @@ export default function CompetitorTimesAdmin() {
             </div>
           </div>
 
-          {/* Bulk entry */}
+          {/* Individual entry with name + school */}
           <div className="section mt-12">
             <div className="card">
-              <div className="card-header">Add Times (seconds)</div>
+              <div className="card-header">Add Individual Time</div>
+              <div className="admin-form">
+                <input
+                  className={`input${singleError ? ' input-error' : ''}`}
+                  style={singleError ? { borderColor: 'var(--danger)' } : {}}
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="Time (e.g. 27.5)"
+                  value={singleTime}
+                  onChange={(e) => { setSingleTime(e.target.value); setSingleError(''); }}
+                />
+                {singleError && (
+                  <div style={{ color: 'var(--danger)', fontSize: 13 }}>{singleError}</div>
+                )}
+                <input
+                  className="input"
+                  type="text"
+                  placeholder="Competitor name (optional)"
+                  value={singleName}
+                  onChange={(e) => setSingleName(e.target.value)}
+                />
+                <input
+                  className="input"
+                  type="text"
+                  placeholder="School / team (optional)"
+                  value={singleSchool}
+                  onChange={(e) => setSingleSchool(e.target.value)}
+                />
+                <button className="btn btn-primary" onClick={handleSingleSubmit}>Add Time</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Bulk entry (times only, no name/school) */}
+          <div className="section mt-12">
+            <div className="card">
+              <div className="card-header">Bulk Add Times (seconds)</div>
               <div className="admin-form">
                 {fields.map((val, idx) => (
                   <div key={idx} className="bulk-entry-row">
@@ -146,7 +220,7 @@ export default function CompetitorTimesAdmin() {
                 )}
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button className="btn btn-ghost" onClick={addField} style={{ flex: 1 }}>+ Add Row</button>
-                  <button className="btn btn-primary" onClick={handleSubmit} style={{ flex: 2 }}>Save Times</button>
+                  <button className="btn btn-primary" onClick={handleBulkSubmit} style={{ flex: 2 }}>Save Times</button>
                 </div>
               </div>
             </div>

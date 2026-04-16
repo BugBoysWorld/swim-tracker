@@ -7,11 +7,12 @@ export default function Dashboard({ onNavigatePlacement, installPrompt }) {
 
   const eventsWithTimes = events.filter((e) => (competitorTimes[e.id] || []).length > 0).length;
 
+
   function getPlacementLabel(swimmerId, eventId) {
     const swimmerTime = swimmerTimes[swimmerId]?.[eventId];
-    const compTimes = competitorTimes[eventId] || [];
-    if (!swimmerTime || compTimes.length === 0) return null;
-    const result = calculatePlacement(swimmerTime, compTimes);
+    const compEntries = competitorTimes[eventId] || [];
+    if (!swimmerTime || compEntries.length === 0) return null;
+    const result = calculatePlacement(swimmerTime, compEntries.map((e) => e.time));
     if (!result) return null;
     return `#${result.rank} of ${result.total}`;
   }

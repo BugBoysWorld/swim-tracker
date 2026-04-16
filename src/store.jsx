@@ -7,10 +7,42 @@ function uid() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
+/**
+ * Migrate swimTracker_v1 state (competitorTimes as number[]) to v2 shape
+ * (competitorTimes as { time, name, school }[]).
+ */
+function migrateState(raw) {
+  if (!raw) return null;
+  try {
+    const competitorTimes = {};
+    for (const [eventId, entries] of Object.entries(raw.competitorTimes || {})) {
+      if (Array.isArray(entries)) {
+        competitorTimes[eventId] = entries.map((e) =>
+          typeof e === 'number' ? { time: e, name: '', school: '' } : e
+        );
+      }
+    }
+    return { ...raw, competitorTimes };
+  } catch {
+    return raw;
+  }
+}
+
 function loadState() {
   try {
-    const raw = localStorage.getItem('swimTracker_v1');
-    if (raw) return JSON.parse(raw);
+    // Check for v2 first
+    const v2 = localStorage.getItem('swimTracker_v2');
+    if (v2) return JSON.parse(v2);
+
+    // Migrate from v1 if present
+    const v1 = localStorage.getItem('swimTracker_v1');
+    if (v1) {
+      const migrated = migrateState(JSON.parse(v1));
+      // Persist migrated state immediately and remove old key
+      localStorage.setItem('swimTracker_v2', JSON.stringify(migrated));
+      localStorage.removeItem('swimTracker_v1');
+      return migrated;
+    }
   } catch {}
   return null;
 }
@@ -20,7 +52,7 @@ function buildInitialState() {
   if (saved) return saved;
   return {
     events: DEFAULT_EVENT_NAMES.map((name) => ({ id: uid(), name, isDefault: true })),
-    competitorTimes: {},  // { [eventId]: number[] }
+    competitorTimes: {},  // { [eventId]: { time, name, school }[] }
     swimmers: [],         // { id, name }[]
     swimmerTimes: {},     // { [swimmerId]: { [eventId]: number } }
   };
@@ -53,17 +85,23 @@ function reducer(state, action) {
     // ── Competitor Times ─────────────────────────────────────────────
     case 'ADD_COMPETITOR_TIMES': {
       const { eventId, times } = action;
-      const existing = new Set(state.competitorTimes[eventId] || []);
-      for (const t of times) {
-        const n = parseFloat(t);
-        if (n > 0) existing.add(n);
+      // times: { time, name, school }[]
+      const existing = state.competitorTimes[eventId] || [];
+      const existingByTime = new Map(existing.map((e) => [e.time, e]));
+      for (const entry of times) {
+        const t = typeof entry === 'number' ? { time: entry, name: '', school: '' } : entry;
+        const n = parseFloat(t.time);
+        if (n > 0) {
+          // Prefer the new entry (it may have a name/school) over the old one
+          existingByTime.set(n, { time: n, name: (t.name || '').trim(), school: (t.school || '').trim() });
+        }
       }
-      const updated = Array.from(existing).sort((a, b) => a - b);
+      const updated = Array.from(existingByTime.values()).sort((a, b) => a.time - b.time);
       return { ...state, competitorTimes: { ...state.competitorTimes, [eventId]: updated } };
     }
     case 'DELETE_COMPETITOR_TIME': {
       const { eventId, time } = action;
-      const updated = (state.competitorTimes[eventId] || []).filter((t) => t !== time);
+      const updated = (state.competitorTimes[eventId] || []).filter((e) => e.time !== time);
       return { ...state, competitorTimes: { ...state.competitorTimes, [eventId]: updated } };
     }
 
@@ -104,6 +142,37 @@ function reducer(state, action) {
       return { ...state, swimmerTimes: { ...state.swimmerTimes, [swimmerId]: prev } };
     }
 
+    // ── Batch actions (CSV import) ───────────────────────────────────
+    case 'BATCH_ADD_SWIMMERS': {
+      // action.names: string[]
+      let swimmers = [...state.swimmers];
+      for (const rawName of action.names) {
+        const name = rawName.trim();
+        if (!name) continue;
+        if (swimmers.some((s) => s.name.toLowerCase() === name.toLowerCase())) continue;
+        swimmers.push({ id: uid(), name });
+      }
+      swimmers.sort((a, b) => a.name.localeCompare(b.name));
+      return { ...state, swimmers };
+    }
+    case 'BATCH_SET_SWIMMER_TIMES': {
+      // action.entries: [{ swimmerId, eventId, time }]
+      let swimmerTimes = { ...state.swimmerTimes };
+      for (const { swimmerId, eventId, time } of action.entries) {
+        const n = parseFloat(time);
+        if (!(n > 0)) continue;
+        const prev = swimmerTimes[swimmerId] || {};
+        swimmerTimes[swimmerId] = { ...prev, [eventId]: n };
+      }
+      return { ...state, swimmerTimes };
+    }
+
+    // ── Backup import ────────────────────────────────────────────────
+    case 'IMPORT_BACKUP': {
+      // action.state: full validated state object
+      return action.state;
+    }
+
     default:
       return state;
   }
@@ -114,7 +183,7 @@ export function StoreProvider({ children }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('swimTracker_v1', JSON.stringify(state));
+      localStorage.setItem('swimTracker_v2', JSON.stringify(state));
     } catch {}
   }, [state]);
 

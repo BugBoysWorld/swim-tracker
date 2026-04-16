@@ -3,6 +3,7 @@ import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
 import PlacementView from './components/PlacementView';
 import AdminView from './components/admin/AdminView';
+import HelpView from './components/HelpView';
 import OfflineIndicator from './components/OfflineIndicator';
 import InstallPrompt from './components/InstallPrompt';
 
@@ -32,6 +33,7 @@ export default function App() {
         />
       )}
       {view === 'admin' && <AdminView />}
+      {view === 'help' && <HelpView />}
 
       <BottomNav current={view} onChange={handleNavChange} />
     </div>

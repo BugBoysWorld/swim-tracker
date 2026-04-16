@@ -1,9 +1,22 @@
 import { useState } from 'react';
 import { useStore } from '../store.jsx';
-import { calculatePlacement, formatTime } from '../utils/placement';
+import { calculatePlacement, formatTime, buildTimeIndex } from '../utils/placement';
 
-function PlacementDetail({ swimmerTime, competitorTimes }) {
-  const result = calculatePlacement(swimmerTime, competitorTimes);
+function CompetitorLabel({ time, timeIndex }) {
+  const info = timeIndex.get(time);
+  if (!info || (!info.name && !info.school)) return null;
+  const parts = [info.name, info.school].filter(Boolean).join(' · ');
+  return (
+    <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 8, fontWeight: 400 }}>
+      {parts}
+    </span>
+  );
+}
+
+function PlacementDetail({ swimmerTime, competitorEntries }) {
+  const times = competitorEntries.map((e) => e.time);
+  const result = calculatePlacement(swimmerTime, times);
+  const timeIndex = buildTimeIndex(competitorEntries);
 
   if (!result) {
     return (
@@ -30,7 +43,10 @@ function PlacementDetail({ swimmerTime, competitorTimes }) {
           <>
             <div className="time-row top-row">
               <span className="time-rank">#1</span>
-              <span className="time-value">{formatTime(topTime)}s</span>
+              <span className="time-value">
+                {formatTime(topTime)}s
+                <CompetitorLabel time={topTime} timeIndex={timeIndex} />
+              </span>
             </div>
             <div className="separator-row">
               <div className="separator-line" />
@@ -46,7 +62,10 @@ function PlacementDetail({ swimmerTime, competitorTimes }) {
           return (
             <div key={t} className={`time-row${r === 1 ? ' top-row' : ''}`}>
               <span className="time-rank">#{r}</span>
-              <span className="time-value">{formatTime(t)}s</span>
+              <span className="time-value">
+                {formatTime(t)}s
+                <CompetitorLabel time={t} timeIndex={timeIndex} />
+              </span>
             </div>
           );
         })}
@@ -64,7 +83,10 @@ function PlacementDetail({ swimmerTime, competitorTimes }) {
         {displaySlower.map((t, i) => (
           <div key={t} className="time-row">
             <span className="time-rank">#{rank + 1 + i}</span>
-            <span className="time-value">{formatTime(t)}s</span>
+            <span className="time-value">
+              {formatTime(t)}s
+              <CompetitorLabel time={t} timeIndex={timeIndex} />
+            </span>
           </div>
         ))}
       </div>
@@ -131,8 +153,10 @@ export default function PlacementView({ initialSwimmerId, initialEventId }) {
               {myEvents.map((event) => {
                 const isOpen = expandedEventId === event.id;
                 const swimmerTime = myTimes[event.id];
-                const compTimes = competitorTimes[event.id] || [];
-                const result = compTimes.length > 0 ? calculatePlacement(swimmerTime, compTimes) : null;
+                const compEntries = competitorTimes[event.id] || [];
+                const result = compEntries.length > 0
+                  ? calculatePlacement(swimmerTime, compEntries.map((e) => e.time))
+                  : null;
 
                 return (
                   <div key={event.id}>
@@ -151,7 +175,7 @@ export default function PlacementView({ initialSwimmerId, initialEventId }) {
                     </div>
                     {isOpen && (
                       <div className="event-expand-detail">
-                        <PlacementDetail swimmerTime={swimmerTime} competitorTimes={compTimes} />
+                        <PlacementDetail swimmerTime={swimmerTime} competitorEntries={compEntries} />
                       </div>
                     )}
                   </div>
