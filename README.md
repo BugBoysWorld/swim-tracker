@@ -2,7 +2,7 @@
 
 A mobile-first web app for competitive swim coaches to track swimmer times, compare against competitor data, and instantly determine placement rankings.
 
-**Live:** [swim-tracker.pages.dev](https://swim-tracker.pages.dev)
+**Live:** [swimtrack.timrjlove.com](https://swimtrack.timrjlove.com)
 
 ---
 

@@ -2,7 +2,8 @@
 
 **Version:** 1.1
 **Date:** April 2026
-**Live URL:** https://swim-tracker.pages.dev
+**Live URL:** https://swimtrack.timrjlove.com
+**Default URL:** https://swim-tracker.timrjlove.com.workers.dev
 **API URL:** N/A — fully client-side, no backend
 
 ---
