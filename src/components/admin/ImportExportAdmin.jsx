@@ -17,17 +17,24 @@ import ConfirmDialog from '../ConfirmDialog';
 function StatusMessage({ status }) {
   if (!status) return null;
   const isError = status.type === 'error';
+  const isWarn  = status.type === 'warning';
+  const bg     = isError ? '#FEF2F2' : isWarn ? '#FFFBEB' : '#F0FDF4';
+  const color  = isError ? 'var(--danger)' : isWarn ? '#92400E' : '#166534';
+  const border = isError ? '#FECACA' : isWarn ? '#FDE68A' : '#BBF7D0';
+
   return (
-    <div style={{
-      marginTop: 8,
-      padding: '10px 12px',
-      borderRadius: 8,
-      fontSize: 13,
-      background: isError ? '#FEF2F2' : '#F0FDF4',
-      color: isError ? 'var(--danger)' : '#166534',
-      border: `1px solid ${isError ? '#FECACA' : '#BBF7D0'}`,
-    }}>
-      {status.message}
+    <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 8, fontSize: 13, background: bg, color, border: `1px solid ${border}` }}>
+      <div style={{ whiteSpace: 'pre-wrap' }}>{status.message}</div>
+      {status.warnings && status.warnings.length > 0 && (
+        <details style={{ marginTop: 6 }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 12, color: '#92400E' }}>
+            {status.warnings.length} fuzzy match{status.warnings.length !== 1 ? 'es' : ''} — tap to review
+          </summary>
+          <ul style={{ margin: '6px 0 0 16px', fontSize: 12, color: '#92400E' }}>
+            {status.warnings.map((w, i) => <li key={i}>{w}</li>)}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }
@@ -113,7 +120,7 @@ export default function ImportExportAdmin() {
     setCompTimesStatus(null);
     try {
       const rows = await parseCsvFile(file);
-      const { valid, errors } = validateCompetitorTimesCSV(rows, events);
+      const { valid, errors, warnings } = validateCompetitorTimesCSV(rows, events);
 
       if (valid.length === 0) {
         setCompTimesStatus({
@@ -133,8 +140,10 @@ export default function ImportExportAdmin() {
         dispatch({ type: 'ADD_COMPETITOR_TIMES', eventId, times });
       }
 
-      const msg = `Imported ${valid.length} time${valid.length !== 1 ? 's' : ''} across ${Object.keys(byEvent).length} event${Object.keys(byEvent).length !== 1 ? 's' : ''}.${errors.length ? `\n${errors.length} row${errors.length !== 1 ? 's' : ''} skipped.` : ''}`;
-      setCompTimesStatus({ type: 'success', message: msg });
+      const eventCount = Object.keys(byEvent).length;
+      let msg = `Imported ${valid.length} time${valid.length !== 1 ? 's' : ''} across ${eventCount} event${eventCount !== 1 ? 's' : ''}.`;
+      if (errors.length) msg += `\n${errors.length} row${errors.length !== 1 ? 's' : ''} skipped.`;
+      setCompTimesStatus({ type: warnings.length ? 'warning' : 'success', message: msg, warnings });
     } catch {
       setCompTimesStatus({ type: 'error', message: 'Could not parse file. Make sure it is a valid CSV.' });
     }
@@ -148,7 +157,7 @@ export default function ImportExportAdmin() {
     setSwimmersStatus(null);
     try {
       const rows = await parseCsvFile(file);
-      const { valid, errors } = validateSwimmersCSV(rows);
+      const { valid, errors, warnings } = validateSwimmersCSV(rows);
 
       if (valid.length === 0) {
         setSwimmersStatus({
@@ -160,8 +169,9 @@ export default function ImportExportAdmin() {
 
       dispatch({ type: 'BATCH_ADD_SWIMMERS', names: valid });
 
-      const msg = `Imported ${valid.length} swimmer${valid.length !== 1 ? 's' : ''}.${errors.length ? `\n${errors.length} row${errors.length !== 1 ? 's' : ''} skipped.` : ''}`;
-      setSwimmersStatus({ type: 'success', message: msg });
+      let msg = `Imported ${valid.length} swimmer${valid.length !== 1 ? 's' : ''}.`;
+      if (errors.length) msg += `\n${errors.length} row${errors.length !== 1 ? 's' : ''} skipped.`;
+      setSwimmersStatus({ type: warnings.length ? 'warning' : 'success', message: msg, warnings });
     } catch {
       setSwimmersStatus({ type: 'error', message: 'Could not parse file. Make sure it is a valid CSV.' });
     }
@@ -175,7 +185,7 @@ export default function ImportExportAdmin() {
     setSwimmerTimesStatus(null);
     try {
       const rows = await parseCsvFile(file);
-      const { valid, errors } = validateSwimmerTimesCSV(rows, swimmers, events);
+      const { valid, errors, warnings } = validateSwimmerTimesCSV(rows, swimmers, events);
 
       if (valid.length === 0) {
         setSwimmerTimesStatus({
@@ -187,8 +197,9 @@ export default function ImportExportAdmin() {
 
       dispatch({ type: 'BATCH_SET_SWIMMER_TIMES', entries: valid });
 
-      const msg = `Imported ${valid.length} time${valid.length !== 1 ? 's' : ''}.${errors.length ? `\n${errors.length} row${errors.length !== 1 ? 's' : ''} skipped.` : ''}`;
-      setSwimmerTimesStatus({ type: 'success', message: msg });
+      let msg = `Imported ${valid.length} time${valid.length !== 1 ? 's' : ''}.`;
+      if (errors.length) msg += `\n${errors.length} row${errors.length !== 1 ? 's' : ''} skipped.`;
+      setSwimmerTimesStatus({ type: warnings.length ? 'warning' : 'success', message: msg, warnings });
     } catch {
       setSwimmerTimesStatus({ type: 'error', message: 'Could not parse file. Make sure it is a valid CSV.' });
     }
