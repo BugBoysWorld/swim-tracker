@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="#0077B6"/>
+
+  <!-- Pool lane lines -->
+  <line x1="64" y1="320" x2="448" y2="320" stroke="#90E0EF" stroke-width="8" stroke-dasharray="24 16" stroke-linecap="round" opacity="0.5"/>
+  <line x1="64" y1="356" x2="448" y2="356" stroke="#90E0EF" stroke-width="8" stroke-dasharray="24 16" stroke-linecap="round" opacity="0.3"/>
+
+  <!-- Swimmer silhouette (freestyle stroke) -->
+  <!-- Body -->
+  <ellipse cx="256" cy="268" rx="100" ry="28" transform="rotate(-8 256 268)" fill="white"/>
+  <!-- Head -->
+  <circle cx="340" cy="248" r="32" fill="white"/>
+  <!-- Cap line -->
+  <path d="M318 230 Q340 218 362 228" stroke="#0077B6" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- Goggle -->
+  <circle cx="348" cy="252" r="8" fill="none" stroke="#CAF0F8" stroke-width="3"/>
+  <!-- Extended arm -->
+  <path d="M358 254 Q410 230 448 218" stroke="white" stroke-width="18" fill="none" stroke-linecap="round"/>
+  <!-- Trailing arm -->
+  <path d="M156 278 Q120 300 88 316" stroke="white" stroke-width="16" fill="none" stroke-linecap="round"/>
+  <!-- Legs / kick -->
+  <path d="M160 278 Q140 300 128 322 Q120 334 134 340" stroke="white" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <path d="M172 290 Q158 318 152 344" stroke="white" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- Water splash at hand entry -->
+  <path d="M438 220 Q452 208 460 222 Q448 228 438 220Z" fill="#CAF0F8" opacity="0.8"/>
+  <path d="M446 212 Q455 200 464 212" stroke="#CAF0F8" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Wave decoration at bottom -->
+  <path d="M64 390 Q128 370 192 390 Q256 410 320 390 Q384 370 448 390" stroke="#CAF0F8" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.6"/>
+  <path d="M64 416 Q128 396 192 416 Q256 436 320 416 Q384 396 448 416" stroke="#CAF0F8" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/>
+</svg>

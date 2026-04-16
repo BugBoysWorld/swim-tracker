@@ -1,7 +1,7 @@
 import { useStore } from '../store.jsx';
 import { calculatePlacement, formatTime } from '../utils/placement';
 
-export default function Dashboard({ onNavigatePlacement }) {
+export default function Dashboard({ onNavigatePlacement, installPrompt }) {
   const { state } = useStore();
   const { events, swimmers, competitorTimes, swimmerTimes } = state;
 
@@ -21,6 +21,7 @@ export default function Dashboard({ onNavigatePlacement }) {
       <div className="header">
         <h1>🏊 Swim Tracker</h1>
         <div className="header-sub">Competitive Placement Dashboard</div>
+        {installPrompt}
       </div>
 
       <div className="screen">

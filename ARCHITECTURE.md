@@ -1,294 +1,320 @@
-# Architecture — Swimming Placement Tracker
+# Swim Tracker — Architecture Document
 
-## Overview
-
-The Swimming Placement Tracker is a single-page application (SPA) built with **React 18** and bundled with **Vite 5**. It runs entirely in the browser with no backend — all state is persisted to `localStorage`. It is deployed as a static site via GitHub Actions to GitHub Pages.
+**Version:** 1.1
+**Date:** April 2026
+**Live URL:** https://swim-tracker.pages.dev
+**API URL:** N/A — fully client-side, no backend
 
 ---
 
-## Tech Stack
+## 1. System Overview
+
+Swim Tracker is a mobile-first single-page application for competitive swim coaches. It allows coaches to record swimmer times, load competitor field times for any event, and instantly see where each swimmer places within the field (#N of M). The entire app runs in the browser with no server — all state is stored in `localStorage` and all placement calculations happen client-side. It is designed for use at swim meets where connectivity may be unreliable, so it is a Tier 1 Full PWA: installable, offline-capable, and functional without a network connection.
+
+---
+
+## 2. Tech Stack
 
 | Layer | Technology | Purpose |
-|-------|-----------|---------|
-| UI Framework | React 18 | Component rendering, state, effects |
-| Build Tool | Vite 5 | Dev server, HMR, production bundling |
-| State Management | React Context + useReducer | Global app state, action dispatch |
-| Persistence | `localStorage` | Cross-session data persistence |
+|---|---|---|
+| UI | React 18 | Component rendering, state, effects |
+| Build | Vite 5 | Dev server, HMR, production bundling |
+| State | React Context + useReducer | Global app state without external library |
+| Storage | localStorage | Cross-session data persistence (single-user, no sync) |
 | Styling | Plain CSS (custom properties) | Mobile-first design, no CSS framework |
 | Fonts | Inter (Google Fonts) | Typography |
-| Deployment | GitHub Actions + GitHub Pages | CI/CD, static hosting |
-| Version Control | Git / GitHub | Source control |
+| PWA | Web App Manifest + Service Worker | Tier 1: installable + offline-capable |
+| Hosting | Cloudflare Pages | Static hosting, automatic deploys from GitHub |
+| CI | GitHub Actions | Build verification on push to `main` |
+| DNS | Cloudflare | Domain + SSL (via Pages) |
 
 ---
 
-## Repository Structure
+## 3. Repository Structure
 
 ```
 swim-tracker/
+├── public/
+│   ├── _headers              ← Cloudflare Pages HTTP security headers
+│   ├── _redirects            ← SPA fallback: /* → /index.html 200
+│   ├── manifest.json         ← PWA web app manifest
+│   ├── sw.js                 ← Service worker (cache-first strategy)
+│   └── icons/
+│       ├── icon.svg          ← Source icon (swimming wave + lane design)
+│       ├── icon-192.png      ← PWA icon 192×192
+│       ├── icon-512.png      ← PWA icon 512×512
+│       └── icon-512-maskable.png ← Android adaptive icon (safe-zone padding)
+├── src/
+│   ├── main.jsx              ← Entry point — mounts React, wraps StoreProvider
+│   ├── App.jsx               ← Root — navigation state, screen routing, PWA components
+│   ├── store.jsx             ← Global state: Context + useReducer + localStorage sync
+│   ├── data/
+│   │   └── defaultEvents.js  ← 20 pre-loaded standard swimming events
+│   ├── utils/
+│   │   └── placement.js      ← Placement calc, time formatting, ordinals
+│   ├── components/
+│   │   ├── BottomNav.jsx     ← Tab bar: Dashboard / Placement / Admin
+│   │   ├── ConfirmDialog.jsx ← Reusable confirmation sheet (destructive actions)
+│   │   ├── Dashboard.jsx     ← Stats + swimmer list with inline placements
+│   │   ├── PlacementView.jsx ← Swimmer selector + expandable event placement detail
+│   │   ├── OfflineIndicator.jsx ← Amber banner when navigator.onLine = false
+│   │   ├── InstallPrompt.jsx ← beforeinstallprompt capture + install button
+│   │   └── admin/
+│   │       ├── AdminView.jsx           ← Segmented control shell
+│   │       ├── EventsAdmin.jsx         ← Add/delete events
+│   │       ├── CompetitorTimesAdmin.jsx ← Bulk time entry + chip management
+│   │       └── SwimmersAdmin.jsx       ← Add/edit/delete swimmers + per-event times
+│   └── styles/
+│       └── app.css           ← All styles — CSS custom properties, mobile-first
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml          # CI/CD: build → deploy to GitHub Pages
-├── src/
-│   ├── main.jsx                # Entry point — mounts React, wraps StoreProvider
-│   ├── App.jsx                 # Root component — navigation state, screen routing
-│   ├── store.jsx               # Global state: Context, useReducer, localStorage sync
-│   ├── data/
-│   │   └── defaultEvents.js    # 20 pre-loaded standard swimming events
-│   ├── utils/
-│   │   └── placement.js        # Placement calculation, time formatting, ordinals
-│   ├── components/
-│   │   ├── BottomNav.jsx       # Tab bar: Dashboard / Placement / Admin
-│   │   ├── ConfirmDialog.jsx   # Reusable confirmation modal (slide-up sheet)
-│   │   ├── Dashboard.jsx       # Overview: stats, swimmer list with placements
-│   │   ├── PlacementView.jsx   # Swimmer selector, expandable event placement detail
-│   │   └── admin/
-│   │       ├── AdminView.jsx           # Segmented control shell for admin tabs
-│   │       ├── EventsAdmin.jsx         # Add/delete events
-│   │       ├── CompetitorTimesAdmin.jsx # Bulk time entry, time chip management
-│   │       └── SwimmersAdmin.jsx       # Add/edit/delete swimmers, per-event times
-│   └── styles/
-│       └── app.css             # All styles — CSS custom properties, mobile-first
-├── index.html                  # Vite HTML entry, viewport meta, font link
-├── vite.config.js              # Vite config — React plugin, GitHub Pages base path
+│       └── deploy.yml        ← CI only: npm ci + npm run build (no deploy step)
+├── index.html                ← Vite entry, viewport meta, manifest link, SW registration
+├── vite.config.js            ← React plugin only — no base path (Cloudflare serves from root)
 ├── package.json
-├── swimming-app-brd.md         # Original Business Requirements Document
-└── ARCHITECTURE.md             # This file
+├── README.md
+├── ARCHITECTURE.md           ← This file
+└── swimming-app-brd.md       ← Original Business Requirements Document
 ```
 
 ---
 
-## State Architecture
+## 4. Architecture Diagram
 
-### Data Model
+```
+Browser
+  │
+  ├─ index.html
+  │    ├─ React SPA (src/main.jsx → App.jsx)
+  │    │    ├─ StoreProvider (Context + useReducer)
+  │    │    │    └─ localStorage "swimTracker_v1" (auto-sync on state change)
+  │    │    ├─ OfflineIndicator  (navigator.onLine events)
+  │    │    ├─ InstallPrompt     (beforeinstallprompt event)
+  │    │    └─ Views: Dashboard | PlacementView | AdminView
+  │    │
+  │    └─ Service Worker (public/sw.js)
+  │         ├─ Install: pre-cache /, /index.html, JS/CSS assets
+  │         ├─ Fetch: cache-first → network fallback
+  │         └─ Activate: purge old cache versions
+  │
+  └─ Cloudflare Pages
+       ├─ Serves dist/ (Vite build output)
+       ├─ _headers → injects security headers on all responses
+       ├─ _redirects → /* → /index.html 200 (SPA routing)
+       └─ Watches github.com/BugBoysWorld/swim-tracker main branch
+            └─ Auto-deploys on every push (build cmd: npm run build)
+```
 
-All application state lives in a single store object persisted to `localStorage` under the key `swimTracker_v1`.
+**Data flow — placement calculation:**
+```
+User enters competitor times → dispatcher → reducer → state.competitorTimes[eventId][]
+                                                              ↓
+User enters swimmer time   → dispatcher → reducer → state.swimmerTimes[swimmerId][eventId]
+                                                              ↓
+                                               calculatePlacement(swimmerTime, competitorTimes)
+                                                              ↓
+                                               { rank, total, displayFaster[], displaySlower[] }
+                                                              ↓
+                                               Rendered in Dashboard + PlacementView (real-time)
+```
+
+---
+
+## 5. Data Model
+
+### localStorage key: `swimTracker_v1`
 
 ```js
 {
   events: [
     { id: string, name: string, isDefault: boolean }
+    // sorted alphabetically, 20 defaults pre-loaded
   ],
 
   competitorTimes: {
-    [eventId]: number[]   // sorted ascending, deduplicated
+    [eventId]: number[]   // sorted ascending, deduplicated via Set on write
   },
 
   swimmers: [
     { id: string, name: string }
+    // sorted alphabetically
   ],
 
   swimmerTimes: {
     [swimmerId]: {
-      [eventId]: number   // one time per swimmer/event combination
+      [eventId]: number   // one time per swimmer/event; new entry overwrites old
     }
   }
 }
 ```
 
-### Store (`src/store.jsx`)
-
-Uses **React Context** + **`useReducer`** to provide a Redux-like pattern without an external library.
-
-```
-StoreProvider
-  └── useReducer(reducer, initialState)
-       ├── state   → read via useStore()
-       └── dispatch → write via action objects
+### ID generation
+```js
+uid() = Math.random().toString(36).slice(2,10) + Date.now().toString(36)
 ```
 
-**Persistence:** A `useEffect` watching `state` writes the full state to `localStorage` after every change. On mount, `buildInitialState()` reads from `localStorage` first, falling back to the 20 default events if no saved data exists.
-
-**ID generation:** Each new event or swimmer gets a collision-resistant ID from `Math.random().toString(36) + Date.now().toString(36)`.
-
-### Action Types
+### State management — actions
 
 | Action | Payload | Effect |
-|--------|---------|--------|
-| `ADD_EVENT` | `name` | Adds a new event, sorted alphabetically; ignores duplicates |
-| `DELETE_EVENT` | `eventId` | Removes event + all associated competitor and swimmer times |
-| `ADD_COMPETITOR_TIMES` | `eventId, times[]` | Merges new times using a `Set` to deduplicate, re-sorts ascending |
-| `DELETE_COMPETITOR_TIME` | `eventId, time` | Removes a single competitor time |
-| `ADD_SWIMMER` | `name` | Adds swimmer, sorted alphabetically; ignores duplicates |
-| `EDIT_SWIMMER` | `swimmerId, name` | Renames swimmer; rejects empty or duplicate names |
-| `DELETE_SWIMMER` | `swimmerId` | Removes swimmer + all their recorded times |
-| `SET_SWIMMER_TIME` | `swimmerId, eventId, time` | Upserts a swimmer's time for an event |
-| `DELETE_SWIMMER_TIME` | `swimmerId, eventId` | Removes a single swimmer/event time |
+|---|---|---|
+| `ADD_EVENT` | `name` | Appends event, sorts alpha; ignores case-insensitive duplicates |
+| `DELETE_EVENT` | `eventId` | Removes event + cascades delete to all competitorTimes and swimmerTimes |
+| `ADD_COMPETITOR_TIMES` | `eventId, times[]` | Merges via Set (dedup), sorts ascending |
+| `DELETE_COMPETITOR_TIME` | `eventId, time` | Removes single time; placement updates immediately |
+| `ADD_SWIMMER` | `name` | Appends swimmer, sorts alpha; ignores duplicates |
+| `EDIT_SWIMMER` | `swimmerId, name` | Renames; rejects empty or duplicate names |
+| `DELETE_SWIMMER` | `swimmerId` | Removes swimmer + all their swimmerTimes |
+| `SET_SWIMMER_TIME` | `swimmerId, eventId, time` | Upserts (overwrites existing time for that event) |
+| `DELETE_SWIMMER_TIME` | `swimmerId, eventId` | Removes single event time; other events unaffected |
 
----
+### Placement algorithm (`src/utils/placement.js`)
 
-## Component Architecture
-
-### Navigation & Routing
-
-There is no client-side router library. Navigation is managed in `App.jsx` via a `view` state string (`'dashboard' | 'placement' | 'admin'`). Deep-link context (e.g. which swimmer/event to pre-select in the Placement view) is passed as props when navigating.
-
-```
-App
-├── view === 'dashboard'  → <Dashboard onNavigatePlacement={fn} />
-├── view === 'placement'  → <PlacementView initialSwimmerId initialEventId />
-├── view === 'admin'      → <AdminView />
-└── <BottomNav current onChange />
-```
-
-### Component Tree
-
-```
-App
-├── Dashboard
-│   ├── stat cards (events / swimmers / loaded)
-│   └── swimmer-card[]
-│       ├── swimmer-name-row  (→ Placement w/ swimmer pre-selected)
-│       └── swimmer-event-row[] (→ Placement w/ swimmer+event pre-selected)
-│
-├── PlacementView
-│   ├── swimmer <select>
-│   ├── event-expand-row[] (collapsible)
-│   │   └── PlacementDetail (inline, no navigation)
-│   │       ├── rank display  (#N of M)
-│   │       ├── top-row       (#1 competitor, always shown)
-│   │       ├── separator-row (··· ellipsis, shown when #1 not in ±3 window)
-│   │       ├── time-row[]    (up to 3 faster competitors)
-│   │       ├── swimmer-row   (highlighted, "▶ You" label)
-│   │       └── time-row[]    (up to 3 slower competitors)
-│   └── empty states
-│
-├── AdminView
-│   ├── segmented control (Events | Comp. Times | My Swimmers)
-│   ├── EventsAdmin
-│   │   ├── add-event form
-│   │   └── event list with delete + ConfirmDialog
-│   ├── CompetitorTimesAdmin
-│   │   ├── event <select>
-│   │   ├── time chips (existing times, deletable)
-│   │   └── bulk entry form (dynamic rows, keyboard navigation)
-│   └── SwimmersAdmin
-│       ├── add-swimmer form
-│       └── SwimmerRow[] (per swimmer)
-│           ├── inline name editing
-│           ├── expandable times section
-│           │   ├── existing swimmer-time rows (deletable)
-│           │   └── add-time form (event select + seconds input)
-│           └── ConfirmDialog (delete swimmer / delete time)
-│
-├── BottomNav
-└── ConfirmDialog (portal-less, rendered in-tree as overlay)
-```
-
----
-
-## Placement Calculation (`src/utils/placement.js`)
-
-The core algorithm runs in O(n) time and is called on every render where placement data is displayed.
+Runs in O(n), called on every render where placement is displayed.
 
 ```
 Input:  swimmerTime (number), competitorTimes (number[])
+
+Steps:
+1. Sort competitorTimes ascending
+2. rank = (times < swimmerTime).length + 1
+3. displayFaster = last 3 of times < swimmerTime  (closest above swimmer)
+4. displaySlower = first 3 of times > swimmerTime (closest below swimmer)
+5. showTopSeparator = true if #1 not already in displayFaster
+
 Output: { rank, total, displayFaster[], displaySlower[], showTopSeparator, topTime }
 ```
 
-**Steps:**
-
-1. Sort competitor times ascending.
-2. `rank` = count of competitor times strictly less than `swimmerTime` + 1.
-3. `displayFaster` = up to the 3 competitor times immediately faster than the swimmer (closest to swimmer time, i.e. `slice(-3)` of times < swimmerTime).
-4. `displaySlower` = up to the 3 competitor times immediately slower (i.e. `slice(0, 3)` of times > swimmerTime).
-5. `showTopSeparator` = true if `displayFaster` does not include the #1 time (i.e. there is a gap between #1 and the start of the ±3 window).
-
-**Example** — swimmerTime = 27.8, competitors = [24.1, 25.3, 26.0, 26.8, 27.1, 27.5, 28.2, 29.0, 29.7, 30.4]:
-
+**Example** — swimmerTime = 27.8, field = [24.1, 25.3, 26.0, 26.8, 27.1, 27.5, 28.2, 29.0, 29.7, 30.4]:
 ```
-rank = 7, total = 10
-displayFaster   = [26.8, 27.1, 27.5]   (#4, #5, #6)
-displaySlower   = [28.2, 29.0, 29.7]   (#8, #9, #10)
-showTopSeparator = true  (because #1 = 24.1 is not in displayFaster)
-topTime          = 24.1
+rank=7, total=10
+displayFaster = [26.8, 27.1, 27.5]  → #4, #5, #6
+displaySlower = [28.2, 29.0, 29.7]  → #8, #9, #10
+showTopSeparator = true (gap between #1=24.1 and displayFaster start)
 
 Rendered:
-  #1   24.1s  ← always shown, gold highlight
-  ···          ← separator (gap exists)
-  #4   26.8s
-  #5   27.1s
-  #6   27.5s
-▶ #7   27.8s  ← swimmer row, blue highlight
-  #8   28.2s
-  #9   29.0s
-  #10  29.7s
+  #1  24.1s  ← gold, always shown
+  ···
+  #4  26.8s
+  #5  27.1s
+  #6  27.5s
+▶ #7  27.8s  ← blue highlight, "▶ You"
+  #8  28.2s
+  #9  29.0s
+  #10 29.7s
 ```
 
 ---
 
-## Styling System
+## 6. API Reference
 
-All styles are in a single `app.css` file using **CSS custom properties** for theming. No CSS framework or CSS-in-JS is used.
-
-### Design Tokens
-
-```css
---primary:        #0077B6   /* main blue */
---primary-dark:   #005F92
---primary-light:  #CAF0F8
---accent:         #00B4D8
---bg:             #F0F6FA   /* page background */
---surface:        #FFFFFF   /* card background */
---text:           #1A202C
---text-secondary: #64748B
---border:         #E2E8F0
---danger:         #EF4444
---swimmer-bg:     #EFF6FF   /* highlighted swimmer row */
---swimmer-text:   #1D4ED8
---nav-height:     64px
---radius:         12px
-```
-
-### Mobile-First Layout
-
-- `max-width: 480px` centered app shell — designed for phone screens, readable on desktop.
-- `env(safe-area-inset-*)` used on header and bottom nav for notch/home-indicator devices.
-- Touch targets are minimum 44px tall throughout.
-- `-webkit-overflow-scrolling: touch` on scrollable content areas.
+Not applicable. Swim Tracker has no backend or external API calls. All data is stored in `localStorage` and all logic runs client-side.
 
 ---
 
-## CI/CD Pipeline
+## 7. Deployment
 
-```
-git push → main
-    │
-    └── GitHub Actions: deploy.yml
-            ├── actions/checkout@v4
-            ├── actions/setup-node@v4  (Node 24)
-            ├── npm ci
-            ├── npm run build          (Vite → dist/)
-            ├── actions/configure-pages@v4  (enablement: true)
-            ├── actions/upload-pages-artifact@v3
-            └── actions/deploy-pages@v4
-                    └── https://bugboysworld.github.io/swim-tracker/
-```
+### Cloudflare Pages (production)
 
-The workflow runs on every push to `main` and can also be triggered manually via `workflow_dispatch`.
+Cloudflare Pages watches the `main` branch of `github.com/BugBoysWorld/swim-tracker` and deploys automatically on every push.
 
----
+| Setting | Value |
+|---|---|
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+| Root directory | `/` |
+| Node.js version | 24 |
+| Environment variables | None required |
 
-## Key Design Decisions
+**First-time setup:**
+1. Cloudflare Dashboard → Workers & Pages → Create → Pages
+2. Connect GitHub → select `BugBoysWorld/swim-tracker`
+3. Set build command: `npm run build`, output: `dist`
+4. Save — first deploy triggers automatically
+5. Live at `swim-tracker.pages.dev`
 
-| Decision | Rationale |
-|----------|-----------|
-| No router library | Three screens with simple linear navigation; a full router would add complexity with no benefit |
-| No external state library | `useReducer` + Context covers the data volume; Redux/Zustand would be over-engineered |
-| Single CSS file | Keeps styles co-located and easy to audit; scoping is handled by class naming conventions |
-| `localStorage` only | BRD explicitly states no cloud/sync requirements; localStorage is synchronous and reliable for this data volume |
-| Flat data structure | Event IDs as foreign keys into flat maps allows O(1) lookups for placement calc without joins |
-| Deduplication via `Set` | Competitor times are stored as a JS `Set` during merge then converted to a sorted array — prevents duplicates at write time |
-| Vite base path | GitHub Pages serves from `/swim-tracker/`, so `base: '/swim-tracker/'` is set in `vite.config.js` for correct asset resolution in production |
+### CI (GitHub Actions)
 
----
+`.github/workflows/deploy.yml` runs on every push to `main` and every PR:
+- `npm ci` → `npm run build`
+- Verifies the build succeeds before Cloudflare deploys
+- Does NOT deploy — Cloudflare handles that independently
 
-## Local Development
+### Local development
 
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm run build      # production build → dist/
-npm run preview    # preview production build locally
+npm run build      # Vite build → dist/
+npm run preview    # preview dist/ locally
 ```
 
-Data is stored in `localStorage` under the key `swimTracker_v1`. Clear it in DevTools → Application → Local Storage to reset to default state.
+---
+
+## 8. Configuration
+
+### `vite.config.js`
+```js
+export default defineConfig({
+  plugins: [react()],
+  // No base path — Cloudflare Pages serves from the domain root
+})
+```
+
+### CSS design tokens (`src/styles/app.css`)
+
+| Token | Value | Usage |
+|---|---|---|
+| `--primary` | `#0077B6` | Buttons, nav active, rank numbers |
+| `--primary-dark` | `#005F92` | Hover states |
+| `--primary-light` | `#CAF0F8` | Badges, highlights |
+| `--bg` | `#F0F6FA` | Page background |
+| `--surface` | `#FFFFFF` | Cards |
+| `--text` | `#1A202C` | Body text |
+| `--text-secondary` | `#64748B` | Labels, subtitles |
+| `--danger` | `#EF4444` | Delete buttons, errors |
+| `--swimmer-bg` | `#EFF6FF` | Highlighted swimmer row in placement |
+| `--nav-height` | `64px` | Bottom nav height |
+| `--radius` | `12px` | Card border radius |
+
+### PWA (`public/manifest.json`)
+
+| Field | Value |
+|---|---|
+| `name` | Swim Tracker |
+| `short_name` | SwimTrack |
+| `theme_color` | `#0077B6` |
+| `background_color` | `#F0F6FA` |
+| `display` | standalone |
+| `start_url` | `/` |
+| PWA Tier | **Tier 1** — Full PWA (manifest + service worker + install prompt + offline indicator) |
+
+### Service Worker (`public/sw.js`)
+
+| Setting | Value |
+|---|---|
+| Cache key | `swim-tracker-v1` |
+| Strategy | Cache-first with network fallback |
+| Pre-cached assets | `/`, `/index.html` |
+| Runtime caching | All GET requests (JS, CSS, fonts) |
+
+---
+
+## 9. Security Notes
+
+- No API keys, secrets, or tokens anywhere in the codebase or repository
+- No external API calls from the browser — app is entirely self-contained
+- `localStorage` holds only non-sensitive data: event names, times, swimmer names
+- `_headers` file enforces: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+- No authentication required (single-user app per BRD scope)
+- Service worker scope is limited to the app origin
+
+---
+
+## 10. Known Limitations
+
+1. **Single-device only** — Data lives in localStorage; no sync between devices or users (out of BRD scope)
+2. **No data export/import** — Competitor times must be re-entered if localStorage is cleared (out of BRD scope)
+3. **No time format conversion** — Times are entered in decimal seconds only (e.g. 27.5), not MM:SS (out of BRD scope)
+4. **No historical tracking** — Only the current time per swimmer/event is stored; past times are overwritten (out of BRD scope)
+5. **PNG icons** — App icons are SVG-sourced; for full Samsung Internet / older Android support, regenerate as PNG using maskable.app
+6. **iOS install prompt** — iOS Safari does not fire `beforeinstallprompt`; a manual "Share → Add to Home Screen" tip is shown instead

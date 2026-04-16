@@ -3,6 +3,8 @@ import BottomNav from './components/BottomNav';
 import Dashboard from './components/Dashboard';
 import PlacementView from './components/PlacementView';
 import AdminView from './components/admin/AdminView';
+import OfflineIndicator from './components/OfflineIndicator';
+import InstallPrompt from './components/InstallPrompt';
 
 export default function App() {
   const [view, setView] = useState('dashboard');
@@ -20,7 +22,8 @@ export default function App() {
 
   return (
     <div className="app">
-      {view === 'dashboard' && <Dashboard onNavigatePlacement={navigatePlacement} />}
+      <OfflineIndicator />
+      {view === 'dashboard' && <Dashboard onNavigatePlacement={navigatePlacement} installPrompt={<InstallPrompt />} />}
       {view === 'placement' && (
         <PlacementView
           key={`${placementContext.swimmerId}-${placementContext.eventId}`}
